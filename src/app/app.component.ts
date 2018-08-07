@@ -95,25 +95,32 @@ class Ring {
     return this;
   }
 
-  drawRandom(ctx: CanvasRenderingContext2D, count = 1000): this {
+  * iterateRandom(): IterableIterator<Line> {
 
-    let prev = this.pins[0]//getRandomArrayElement(this.pins);
+    let prev = getRandomArrayElement(this.pins);
 
-    let winding = true;
+    let clockwise = true;
 
-    const lines = Array.from({length: count}).map((_, index, arr): Line => {
-
+    while (true) {
       const next: Pin = getRandomArrayElement(prev.getAccessiblePins());
 
-      let nextWinding = Math.random() > 0.5;
-      const line = next.getTangent(prev, true, true);
+      const nextWinding = Math.random() > 0.5;
+
+      clockwise = nextWinding ? clockwise : !clockwise;
+
+      const line = prev.getTangent(next, nextWinding, clockwise);
 
       prev = next;
 
-      winding = nextWinding;
+      yield line;
+    }
+  }
 
-      return line;
-    });
+  drawRandom(ctx: CanvasRenderingContext2D, count = 1000): this {
+
+    const randomLineIterator = this.iterateRandom();
+
+    const lines = Array.from({length: count}).map((_, index, arr): Line => randomLineIterator.next().value);
 
     this.drawLines(ctx, lines);
     return this;
@@ -197,11 +204,11 @@ class Pin {
     return Math.atan2(to.centre.y - this.centre.y, to.centre.x - this.centre.x)
   }
 
-  getTangent(to: Pin, external = true, clockwise = true): [Coordinate, Coordinate] {
+  getTangent(to: Pin, external = true, endClockwise = true): [Coordinate, Coordinate] {
 
     const tangents = this.getTangents(to);
 
-    return tangents[external ? 'external' : 'internal'][clockwise ? 'clockwise' : 'anticlockwise'];
+    return tangents[external ? 'external' : 'internal'][endClockwise ? 'clockwise' : 'anticlockwise'];
   }
 
   getTangents(to: Pin): Tangents {
@@ -249,10 +256,21 @@ class Pin {
 
         i++;
 
-        tangents[i > 2 ? 'internal' : 'external'][i % 2 ? 'clockwise' : 'anticlockwise'] = [
-          {x: this.centre.x + this.radius * nx, y: this.centre.y + this.radius * ny},
-          {x: to.centre.x + sign1 * to.radius * nx, y: to.centre.y + sign1 * to.radius * ny},
-        ]
+        const fromPoint = {
+          x: this.centre.x + this.radius * nx,
+          y: this.centre.y + this.radius * ny
+        };
+
+        const toPoint = {
+          x: to.centre.x + sign1 * to.radius * nx,
+          y: to.centre.y + sign1 * to.radius * ny
+        };
+
+        if (i > 2) { // internal
+          tangents.internal[i % 2 ? 'clockwise' : 'anticlockwise'] = [fromPoint, toPoint]
+        } else {
+          tangents.external[i % 2 ? 'anticlockwise' : 'clockwise'] = [fromPoint, toPoint]
+        }
 
       }
     }
@@ -320,23 +338,51 @@ export class AppComponent implements AfterViewInit {
   private pinCount = 50;
   private pinDiameter = 20;
 
+  private ctx;
+  private ring: Ring;
+
   draw() {
 
     const ctx = this.canvas.nativeElement.getContext('2d');
+    this.ctx = ctx;
 
     ctx.clearRect(0, 0, this.width, this.height);
 
     const circleDiameter = Math.min(this.width, this.height) / 2 * 0.9;
 
-    new Ring(circleDiameter, {x: this.width / 2, y: this.height / 2})
-        .addPins(this.pinCount, this.pinDiameter)
-        .draw(ctx)
-      .drawRandom(ctx, 10)
+    const ring = new Ring(circleDiameter, {x: this.width / 2, y: this.height / 2})
+      .addPins(this.pinCount, this.pinDiameter)
+      .draw(ctx)
+      // .drawRandom(ctx, 10)
     ;
 
-    // ring.pins
+    this.ring = ring;
+
+    ring.pins
     // [ring.pins[0]]
-    //   .forEach(p => ring.drawLines(ctx, p.getCandidateLines(), 0.3))
+      .forEach(p => ring.drawLines(ctx, p.getCandidateLines(), 0.3))
+
+  }
+
+  public animationCancel: number;
+
+  startRandomAnimation() {
+    const lineIterator = this.ring.iterateRandom();
+    const lines = [];
+    const addRandomLine = () => {
+      lines.push(lineIterator.next().value);
+      this.ctx.clearRect(0, 0, this.width, this.height);
+      this.ring.draw(this.ctx);
+      this.ring.drawLines(this.ctx, lines);
+      this.animationCancel = requestAnimationFrame(addRandomLine)
+    }
+
+    requestAnimationFrame(addRandomLine);
+  }
+
+  stopRandomAnimation() {
+    cancelAnimationFrame(this.animationCancel);
+    this.animationCancel = null;
   }
 
   ngAfterViewInit() {
@@ -357,10 +403,9 @@ export class AppComponent implements AfterViewInit {
 
 function* getRandomArrayElementIterator<T>(arr: T[]): IterableIterator<T> {
   while (true) {
-    yield arr[Math.floor(Math.random() * arr.length)];
+    yield getRandomArrayElement(arr);
   }
 }
-
 
 
 function getRandomArrayElement<T>(arr: T[]): T {

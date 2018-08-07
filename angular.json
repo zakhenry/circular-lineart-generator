@@ -121,6 +121,46 @@
           }
         }
       }
+    },
+    "lineart-generator": {
+      "root": "projects/lineart-generator",
+      "sourceRoot": "projects/lineart-generator/src",
+      "projectType": "library",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-ng-packagr:build",
+          "options": {
+            "tsConfig": "projects/lineart-generator/tsconfig.lib.json",
+            "project": "projects/lineart-generator/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "project": "projects/lineart-generator/ng-package.prod.json"
+            }
+          }
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "projects/lineart-generator/src/test.ts",
+            "tsConfig": "projects/lineart-generator/tsconfig.spec.json",
+            "karmaConfig": "projects/lineart-generator/karma.conf.js"
+          }
+        },
+        "lint": {
+          "builder": "@angular-devkit/build-angular:tslint",
+          "options": {
+            "tsConfig": [
+              "projects/lineart-generator/tsconfig.lib.json",
+              "projects/lineart-generator/tsconfig.spec.json"
+            ],
+            "exclude": [
+              "**/node_modules/**"
+            ]
+          }
+        }
+      }
     }
   },
   "defaultProject": "circular-lineart-generator"

@@ -16,6 +16,14 @@
     "lib": [
       "es2017",
       "dom"
-    ]
+    ],
+    "paths": {
+      "lineart-generator": [
+        "dist/lineart-generator"
+      ],
+      "lineart-generator/*": [
+        "dist/lineart-generator/*"
+      ]
+    }
   }
 }

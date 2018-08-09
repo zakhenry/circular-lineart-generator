@@ -9,21 +9,13 @@
     "moduleResolution": "node",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "target": "es5",
+    "target": "es2017",
     "typeRoots": [
       "node_modules/@types"
     ],
     "lib": [
       "es2017",
       "dom"
-    ],
-    "paths": {
-      "lineart-generator": [
-        "dist/lineart-generator"
-      ],
-      "lineart-generator/*": [
-        "dist/lineart-generator/*"
-      ]
-    }
+    ]
   }
 }

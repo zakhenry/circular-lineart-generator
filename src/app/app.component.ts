@@ -19,8 +19,8 @@ export class AppComponent implements AfterViewInit {
   constructor(private zone: NgZone) {
   }
 
-  private pinCount = 30;
-  private pinDiameter = 20;
+  private pinCount = 100;
+  private pinDiameter = 2;
 
   private ctx;
   private srcImageCtx;

@@ -1,7 +1,7 @@
 import {Ring} from "./ring";
 import {Coordinate, Line, Tangents, TestedTangent} from "./types";
 import {TangentLine} from "./line";
-import {drawLinePixels, LINE_PIXEL_STRIDE, LINE_PIXEL_VALUE_MULTIPLIER} from "./util";
+import {drawLinePixels, getRandomArrayElement, LINE_PIXEL_STRIDE, LINE_PIXEL_VALUE_MULTIPLIER} from "./util";
 
 export class Pin {
   private ring: Ring;
@@ -150,9 +150,9 @@ export class Pin {
       const pixels = l.pixels;
       const pixelCount = pixels.length / LINE_PIXEL_STRIDE;
 
-      let imageLineIntensity = 0;
-      let currentOutputIntensity = 0;
-      let newOutputIntensity = 0;
+      let targetIntensity = 0;
+      let currentIntensity = 0;
+      let newIntensity = 0;
 
       for (let i = 0; i < pixels.length; i += LINE_PIXEL_STRIDE) {
 
@@ -162,26 +162,25 @@ export class Pin {
           srcImgData.data[pixelIndex] +
           srcImgData.data[pixelIndex + 1] +
           srcImgData.data[pixelIndex + 2]
-        ) / 765) * srcImgData.data[pixelIndex + 3];
+        ) / 765) * srcImgData.data[pixelIndex + 3]/255;
 
-        let currentIntensity = (1 - (
+        let current = (1 - (
           currentOutputData.data[pixelIndex] +
           currentOutputData.data[pixelIndex + 1] +
           currentOutputData.data[pixelIndex + 2]
-        ) / 765) * currentOutputData.data[pixelIndex + 3];
+        ) / 765) * currentOutputData.data[pixelIndex + 3]/255;
 
-        let newIntensity = Math.max(1, currentIntensity + 0.5);
+        let next = Math.min(1, current + 0.5);
 
         const pixelValue = pixels[i + 2] / LINE_PIXEL_VALUE_MULTIPLIER;
-        imageLineIntensity += intensity * pixelValue;
-        currentOutputIntensity += currentIntensity * pixelValue;
-        newOutputIntensity += newIntensity * pixelValue;
+        targetIntensity += intensity * pixelValue;
+        currentIntensity += current * pixelValue;
+        newIntensity += next * pixelValue;
       }
 
-      imageLineIntensity /= pixelCount;
-      currentOutputIntensity /= pixelCount;
-      newOutputIntensity /= pixelCount;
-
+      targetIntensity /= pixelCount;
+      currentIntensity /= pixelCount;
+      newIntensity /= pixelCount;
 
       // II = 0.8 (nearly black)
       // COI = 0 (never visited)
@@ -193,16 +192,16 @@ export class Pin {
       // NOI = 1 (black)
       // score = II - COI = -0.2
 
-      let score = imageLineIntensity - newOutputIntensity;
+      // let score = targetIntensity - currentIntensity /*+ newIntensity*/;
+      let score = targetIntensity - (currentIntensity + newIntensity);
 
-      // let score = /*newOutputIntensity*/ - imageLineIntensity;
       // if (imageLineIntensity > newOutputIntensity) {
       //   score = 0;
       // }
-      //
-      // if (currentOutputIntensity === newOutputIntensity) {
-      //   score = 0;
-      // }
+
+      if (currentIntensity >= newIntensity) {
+        score = 0;
+      }
 
       return {line: l, score};
     })
@@ -210,18 +209,22 @@ export class Pin {
 
   getBestTangent(currentOutputData: ImageData, srcImgData: ImageData, startingClockwise?: boolean): TangentLine {
 
-    const best: TestedTangent =
-      this.getScoredTangents(currentOutputData, srcImgData, startingClockwise).reduce((best: TestedTangent, testedLine: TestedTangent) => {
+    const bestScoring: TestedTangent[] =
+      this.getScoredTangents(currentOutputData, srcImgData, startingClockwise)
+        .reduce((best: TestedTangent[], testedLine: TestedTangent, i, scores) => {
 
-        if (!best || testedLine.score > best.score) {
-          return testedLine;
+        if (!best.length || testedLine.score > best[0].score) {
+          best = [testedLine];
+        } else if (testedLine.score === best[0].score) {
+          best.push(testedLine);
         }
 
         return best;
 
-      }, null);
+      }, []);
 
-    return best.line
+
+    return bestScoring.length === 1 ? bestScoring[0].line : getRandomArrayElement(bestScoring).line;
   }
 
 }

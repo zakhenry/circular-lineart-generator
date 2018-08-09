@@ -1,7 +1,7 @@
 import {Ring} from "./ring";
 import {Coordinate, Line, Tangents, TestedTangent} from "./types";
 import {TangentLine} from "./line";
-import {drawLinePixels} from "./util";
+import {drawLinePixels, LINE_PIXEL_STRIDE, LINE_PIXEL_VALUE_MULTIPLIER} from "./util";
 
 export class Pin {
   private ring: Ring;
@@ -147,9 +147,16 @@ export class Pin {
 
     return candidateLines.map((l, i): TestedTangent => {
 
-      let [imageLineIntensity, currentOutputIntensity, newOutputIntensity] = l.pixels.reduce(([i, c, n], p) => {
+      const pixels = l.pixels;
+      const pixelCount = pixels.length / LINE_PIXEL_STRIDE;
 
-        const pixelIndex = (p.y * srcImgData.width + p.x) * 4;
+      let imageLineIntensity = 0;
+      let currentOutputIntensity = 0;
+      let newOutputIntensity = 0;
+
+      for (let i = 0; i < pixels.length; i += LINE_PIXEL_STRIDE) {
+
+        const pixelIndex = (pixels[i + 1] * srcImgData.width + pixels[i]) * 4;
 
         let intensity = (1 - (
           srcImgData.data[pixelIndex] +
@@ -165,12 +172,15 @@ export class Pin {
 
         let newIntensity = Math.max(1, currentIntensity + 0.5);
 
-        return [i + (intensity * p.value), c + (currentIntensity * p.value), n + (newIntensity * p.value)];
-      }, [0, 0, 0]);
+        const pixelValue = pixels[i + 2] / LINE_PIXEL_VALUE_MULTIPLIER;
+        imageLineIntensity += intensity * pixelValue;
+        currentOutputIntensity += currentIntensity * pixelValue;
+        newOutputIntensity += newIntensity * pixelValue;
+      }
 
-      imageLineIntensity /= l.pixels.length;
-      currentOutputIntensity /= l.pixels.length;
-      newOutputIntensity /= l.pixels.length;
+      imageLineIntensity /= pixelCount;
+      currentOutputIntensity /= pixelCount;
+      newOutputIntensity /= pixelCount;
 
 
       // II = 0.8 (nearly black)

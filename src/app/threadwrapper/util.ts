@@ -31,16 +31,14 @@ function remainderFractionalPart(x: number): number {
  * This is a slightly simplified variant of Xiaolin Wu's line algorithm with the start and end point section of the algorithm removed
  * as we don't care about start & end points.
  */
-export const LINE_PIXEL_VALUE_MULTIPLIER = 2**16-1;
+export const LINE_PIXEL_VALUE_MULTIPLIER = 2**15-1;
 export const LINE_PIXEL_STRIDE = 3;
-export function getLinePixels([from, to]: Line): AntialiasedLine {
+export function getLinePixels([from, to]: Line): Int16Array {
 
   let x0 = from.x;
   let y0 = from.y;
   let x1 = to.x;
   let y1 = to.y;
-
-  const pixels: AntialiasedLine = [];
 
   const steep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
 
@@ -70,16 +68,6 @@ export function getLinePixels([from, to]: Line): AntialiasedLine {
   const arr = new Int16Array((xpxl2-xpxl1) * 6);
   for (let x = xpxl1 + 1; x < xpxl2 - 1; x++) {
 
-    pixels.push({
-      x: steep ? integerPart(interY) : x,
-      y: steep ? x : integerPart(interY),
-      value: remainderFractionalPart(interY)
-    }, {
-      x: steep ? integerPart(interY) + 1 : x,
-      y: steep ? x : integerPart(interY) + 1,
-      value: fractionalPart(interY)
-    });
-
     const index = x - (xpxl1 + 1);
 
     // @todo use this Int16Array instead of the returned pixels for performance
@@ -93,7 +81,7 @@ export function getLinePixels([from, to]: Line): AntialiasedLine {
     interY += gradient;
   }
 
-  return pixels;
+  return arr;
 }
 
 export function drawLinePixels(ctx: CanvasRenderingContext2D): (line: AntialiasedLine) => void {

@@ -12,7 +12,7 @@ export class TangentLine {
   }
 
   // getter used for lazy evaluation
-  get pixels(): Pixel[] {
+  get pixels(): Int16Array {
     if (this.cachedPixels) {
       return this.cachedPixels;
     }

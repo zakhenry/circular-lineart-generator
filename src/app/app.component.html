@@ -5,7 +5,7 @@
 <canvas #srcImageCanvas [width]="width" [height]="height"></canvas>
 
 <label for="pinCount">Pin Count</label>
-<input id="pinCount" type="range" min="6" max="128" value="50" #pinCount (change)="setPinCount(pinCount.value)">
+<input id="pinCount" type="range" min="6" max="128" value="80" #pinCount (change)="setPinCount(pinCount.value)">
 
 <label for="pinCount">Pin Diameter</label>
 <input id="pinDiameter" type="range" min="2" max="40" value="20" #pinDiameter (change)="setPinDiameter(pinDiameter.value)">
@@ -15,4 +15,5 @@
 
 
 
-<img #srcImage src="/assets/hands.jpg" alt="">
+<!--<img #srcImage src="/assets/hands.jpg" alt="">-->
+<img #srcImage src="/assets/einstein.jpg" alt="">

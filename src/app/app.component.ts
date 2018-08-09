@@ -1,8 +1,5 @@
 import {AfterViewInit, Component, ElementRef, Input, NgZone, ViewChild} from '@angular/core';
 import {Ring} from "./threadwrapper/ring";
-import {drawLinePixels, getLinePixels} from "./threadwrapper/util";
-import {Line, TestedTangent} from "./threadwrapper/types";
-import {TangentLine} from "./threadwrapper/line";
 
 
 @Component({
@@ -98,6 +95,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   public windingAnimationCancel: number;
+  public totalLength = 0;
 
   startWindingAnimation() {
 
@@ -107,7 +105,9 @@ export class AppComponent implements AfterViewInit {
     this.ring.draw(this.ctx);
 
     const addWindingLine = () => {
-      lineIterator.next();
+      const line = lineIterator.next().value;
+      this.totalLength += (line.length / 1000 * 25.4) / 72; // length in m @ 72ppi
+
       this.windingAnimationCancel = requestAnimationFrame(addWindingLine)
     }
 
@@ -130,12 +130,23 @@ export class AppComponent implements AfterViewInit {
 
     image.onload = () => {
 
-      const overflowHorizontal = (image.width / image.height) > (canvas.width / canvas.height);
+      const canvasAspect = canvas.width / canvas.height;
+      const imageAspect = image.width / image.height;
+      const overflowHorizontal = imageAspect > canvasAspect;
 
-      const overlapX = overflowHorizontal && image.width > canvas.width ? (image.width - canvas.width) : 0;
-      const overlapY = !overflowHorizontal && image.height > canvas.height ? (image.height - canvas.height) : 0;
+      const scale = overflowHorizontal ? (canvas.height / image.height) : (canvas.width / image.width);
 
-      ctx.drawImage(image, overlapX / 2, overlapY / 2, image.width - overlapX, image.height - overlapY, 0, 0, canvas.width, canvas.height)
+      ctx.drawImage(
+        image,
+        Math.max((image.width - (canvas.width / scale)) / 2, 0),
+        Math.max((image.height - (canvas.height / scale)) / 2, 0),
+        overflowHorizontal ? canvasAspect * image.height : image.width,
+        !overflowHorizontal ? canvasAspect * image.width : image.height,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      )
 
       ctx.globalCompositeOperation = 'destination-in';
       ctx.beginPath();

@@ -2,10 +2,11 @@
 
 <button *ngIf="!windingAnimationCancel" (click)="startWindingAnimation()">Start winding animation</button>
 <button *ngIf="windingAnimationCancel" (click)="stopWindingAnimation()">Stop winding animation</button>
+<pre>Total Length: {{totalLength|number:'1.2-2'}}m</pre>
 <canvas #srcImageCanvas [width]="width" [height]="height"></canvas>
 
 <label for="pinCount">Pin Count</label>
-<input id="pinCount" type="range" min="6" max="128" value="80" #pinCount (change)="setPinCount(pinCount.value)">
+<input id="pinCount" type="range" min="6" max="200" value="50" #pinCount (change)="setPinCount(pinCount.value)">
 
 <label for="pinCount">Pin Diameter</label>
 <input id="pinDiameter" type="range" min="2" max="40" value="20" #pinDiameter (change)="setPinDiameter(pinDiameter.value)">

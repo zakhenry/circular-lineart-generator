@@ -1,9 +1,8 @@
-<!--The content below is only a placeholder and can be replaced.-->
-<div style="text-align:center">
+<canvas #canvas [width]="width" [height]="height"></canvas>
 
-  <canvas #canvas [width]="width" [height]="height"></canvas>
-
-</div>
+<button *ngIf="!windingAnimationCancel" (click)="startWindingAnimation()">Start winding animation</button>
+<button *ngIf="windingAnimationCancel" (click)="stopWindingAnimation()">Stop winding animation</button>
+<canvas #srcImageCanvas [width]="width" [height]="height"></canvas>
 
 <label for="pinCount">Pin Count</label>
 <input id="pinCount" type="range" min="6" max="128" value="50" #pinCount (change)="setPinCount(pinCount.value)">
@@ -11,5 +10,9 @@
 <label for="pinCount">Pin Diameter</label>
 <input id="pinDiameter" type="range" min="2" max="40" value="20" #pinDiameter (change)="setPinDiameter(pinDiameter.value)">
 
-<button *ngIf="!animationCancel" (click)="startRandomAnimation()">Start random animation</button>
-<button *ngIf="animationCancel" (click)="stopRandomAnimation()">Stop random animation</button>
+<button *ngIf="!randomAnimationCancel" (click)="startRandomAnimation()">Start random animation</button>
+<button *ngIf="randomAnimationCancel" (click)="stopRandomAnimation()">Stop random animation</button>
+
+
+
+<img #srcImage src="/assets/hands.jpg" alt="">

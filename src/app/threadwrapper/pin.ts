@@ -1,5 +1,6 @@
 import {Ring} from "./ring";
-import {Coordinate, Line, Tangents} from "./types";
+import {Coordinate, Line, Tangents, TestedTangent} from "./types";
+import {TangentLine} from "./line";
 
 export class Pin {
   private ring: Ring;
@@ -14,7 +15,7 @@ export class Pin {
     return Math.atan2(to.centre.y - this.centre.y, to.centre.x - this.centre.x)
   }
 
-  getTangent(to: Pin, external = true, endClockwise = true): [Coordinate, Coordinate] {
+  getTangent(to: Pin, external = true, endClockwise = true): TangentLine {
 
     const tangents = this.getTangents(to);
 
@@ -77,9 +78,9 @@ export class Pin {
         };
 
         if (i > 2) { // internal
-          tangents.internal[i % 2 ? 'clockwise' : 'anticlockwise'] = [fromPoint, toPoint]
+          tangents.internal[i % 2 ? 'clockwise' : 'anticlockwise'] = new TangentLine([fromPoint, toPoint], this, to, i % 2 === 0, true);
         } else {
-          tangents.external[i % 2 ? 'anticlockwise' : 'clockwise'] = [fromPoint, toPoint]
+          tangents.external[i % 2 ? 'anticlockwise' : 'clockwise'] = new TangentLine([fromPoint, toPoint], this, to, i % 2 !== 0, false);
         }
 
       }
@@ -109,16 +110,22 @@ export class Pin {
     return this;
   }
 
-  getCandidateLines(): Line[] {
-    return Array.from(this.ring.candidatePinIterator(this, false)).reduce((lines: Line[], pin) => {
+  getCandidateLines(startingClockwise?: boolean): TangentLine[] {
+    return Array.from(this.ring.candidatePinIterator(this, false)).reduce((lines: TangentLine[], pin) => {
 
       const tangents = this.getTangents(pin);
-      lines.push(
-        tangents.external.clockwise,
-        tangents.external.anticlockwise,
-        tangents.internal.clockwise,
-        tangents.internal.anticlockwise,
-      );
+
+      if (startingClockwise || startingClockwise === undefined) {
+        lines.push(
+          tangents.external.clockwise,
+          tangents.internal.anticlockwise,
+        );
+      } else if (!startingClockwise) {
+        lines.push(
+          tangents.internal.clockwise,
+          tangents.external.anticlockwise,
+        );
+      }
 
       return lines;
     }, []);
@@ -126,6 +133,44 @@ export class Pin {
 
   getAccessiblePins(): Pin[] {
     return Array.from(this.ring.candidatePinIterator(this));
+  }
+
+  getScoredTangents(srcImgData: ImageData, startingClockwise?: boolean): TestedTangent[] {
+    return this.getCandidateLines(startingClockwise).map((l): TestedTangent => {
+
+      let score = l.pixels.reduce((s, p) => {
+
+        const pixelIndex = (p.y * srcImgData.width + p.x) * 4;
+
+        let intensity = (
+          srcImgData.data[pixelIndex] +
+          srcImgData.data[pixelIndex + 1] +
+          srcImgData.data[pixelIndex + 2]
+        ) / 765;
+
+        return s + (intensity * p.value);
+      }, 0);
+
+      score /= l.pixels.length;
+
+      return {line: l, score};
+    })
+  }
+
+  getBestTangent(srcImgData: ImageData, startingClockwise?: boolean): TangentLine {
+
+    const best: TestedTangent =
+      this.getScoredTangents(srcImgData, startingClockwise).reduce((best: TestedTangent, testedLine: TestedTangent) => {
+
+        if (!best || testedLine.score < best.score) {
+          return testedLine;
+        }
+
+        return best;
+
+      }, null);
+
+    return best.line
   }
 
 }

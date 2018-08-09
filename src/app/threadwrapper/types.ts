@@ -1,3 +1,4 @@
+import {TangentLine} from "./line";
 
 export interface Coordinate {
   x: number;
@@ -15,8 +16,13 @@ export type Line = [Coordinate, Coordinate];
 export type AntialiasedLine = Pixel[];
 
 export interface TangentPair {
-  clockwise: [Coordinate, Coordinate];
-  anticlockwise: [Coordinate, Coordinate];
+  clockwise: TangentLine;
+  anticlockwise: TangentLine;
+}
+
+export interface TestedTangent {
+  line: TangentLine;
+  score: number;
 }
 
 export interface Tangents {

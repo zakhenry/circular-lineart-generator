@@ -1,6 +1,7 @@
 import {Pin} from "./pin";
 import {Coordinate, Line} from "./types";
 import {getRandomArrayElement} from "./util";
+import {TangentLine} from "./line";
 
 export class Ring {
   public pins: Pin[];
@@ -30,14 +31,14 @@ export class Ring {
 
     const firstPin = this.pins[0];
     const testPinIterator = this.pinIterator(firstPin);
-    const [from, to] = this.pins[1].getTangent(firstPin, false, false);
+    const [from, to] = this.pins[1].getTangent(firstPin, false, false).line;
 
     const maxAngle = Math.atan2(to.y - from.y, to.x - from.x);
 
     for (let skipCount = 0; skipCount < this.pins.length; skipCount++) {
       const next = testPinIterator.next().value;
 
-      const [extFrom, extTo] = firstPin.getTangent(next, true, false);
+      const [extFrom, extTo] = firstPin.getTangent(next, true, false).line;
 
       const extAngle = Math.atan2(extFrom.y - extTo.y, extFrom.x - extTo.x);
 
@@ -65,13 +66,13 @@ export class Ring {
     return this;
   }
 
-  drawLine(ctx: CanvasRenderingContext2D, line: Line, color: number = 1, alpha = 1): this {
+  drawLine(ctx: CanvasRenderingContext2D, line: Line, color: number = 1, alpha = 1, brightness = .5): this {
 
     const [from, to] = line;
 
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
-    ctx.strokeStyle = `hsla(${360 * color}, 100%, 50%, ${alpha})`;
+    ctx.strokeStyle = `hsla(${360 * color}, 100%, ${brightness*100}%, ${alpha})`;
 
     ctx.lineTo(to.x, to.y);
     ctx.stroke();
@@ -79,18 +80,18 @@ export class Ring {
     return this;
   }
 
-  drawLines(ctx: CanvasRenderingContext2D, lines: Line[], alpha = 1): this {
+  drawLines(ctx: CanvasRenderingContext2D, lines: TangentLine[], alpha = 1): this {
 
-    lines.forEach((line, index) => {
+    lines.forEach((tangentLine, index) => {
 
-      this.drawLine(ctx, line, index / lines.length, alpha);
+      this.drawLine(ctx, tangentLine.line, index / lines.length, alpha);
 
     });
 
     return this;
   }
 
-  * iterateRandom(): IterableIterator<Line> {
+  * iterateRandom(): IterableIterator<TangentLine> {
 
     let prev = getRandomArrayElement(this.pins);
 
@@ -115,7 +116,7 @@ export class Ring {
 
     const randomLineIterator = this.iterateRandom();
 
-    const lines = Array.from({length: count}).map((_, index, arr): Line => randomLineIterator.next().value);
+    const lines = Array.from({length: count}).map((_, index, arr) => randomLineIterator.next().value);
 
     this.drawLines(ctx, lines);
     return this;
@@ -146,7 +147,7 @@ export class Ring {
     }
   }
 
-  * candidatePinIterator(startingPin: Pin, clockwise = true): IterableIterator<Pin> {
+  * candidatePinIterator(startingPin: Pin, iterateClockwise = true): IterableIterator<Pin> {
     const maxDistance = this.getNeighboringPinSkipCount();
 
     const initialIndex = this.pins.indexOf(startingPin);
@@ -154,22 +155,39 @@ export class Ring {
     const startingIndex = this.wrapInt(initialIndex + maxDistance);
     const endingIndex = this.wrapInt(initialIndex - maxDistance);
 
-    let index = clockwise ? startingIndex : endingIndex;
+    let index = iterateClockwise ? startingIndex : endingIndex;
 
     while (true) {
 
 
-      index += clockwise ? 1 : -1;
+      index += iterateClockwise ? 1 : -1;
 
       if (index >= this.pins.length || index < 0) {
         index = this.wrapInt(index);
       }
 
-      if (index === (clockwise ? endingIndex : startingIndex)) {
+      if (index === (iterateClockwise ? endingIndex : startingIndex)) {
         break;
       }
 
       yield this.pins[index];
+    }
+
+  }
+
+  * iterateWinding(outputCtx: CanvasRenderingContext2D, imageCtx: CanvasRenderingContext2D): IterableIterator<TangentLine> {
+
+    let pin = this.pins[0]; //todo start somewhere else
+
+    let windingClockwise: boolean;
+    while(true) {
+      // @todo this is not comparing with the current state
+      const bestTangent = pin.getBestTangent(imageCtx.getImageData(0, 0, imageCtx.canvas.width, imageCtx.canvas.height), windingClockwise);
+
+      pin = bestTangent.toPin;
+      windingClockwise = bestTangent.internal ? !bestTangent.clockwise : bestTangent.clockwise;
+
+      yield bestTangent;
     }
 
   }

@@ -86,7 +86,7 @@ export function drawLinePixels(ctx: CanvasRenderingContext2D): (line: Antialiase
 
 
   return (line: AntialiasedLine) => {
-    if (1) {
+    if (0) {
       ctx.beginPath();
       ctx.strokeStyle = `hsla(1, 100%, 0%, 1)`;
       ctx.moveTo(line[0].x + 100, line[0].y);

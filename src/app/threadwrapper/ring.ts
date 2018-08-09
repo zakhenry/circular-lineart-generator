@@ -1,5 +1,6 @@
 import {Pin} from "./pin";
 import {Coordinate, Line} from "./types";
+import {getRandomArrayElement} from "./util";
 
 export class Ring {
   public pins: Pin[];

@@ -1,5 +1,6 @@
 import {AfterViewInit, Component, ElementRef, Input, ViewChild} from '@angular/core';
 import {Ring} from "./threadwrapper/ring";
+import {drawLinePixels, getLinePixels} from "./threadwrapper/util";
 
 
 @Component({
@@ -17,7 +18,7 @@ export class AppComponent implements AfterViewInit {
   constructor() {
   }
 
-  private pinCount = 50;
+  private pinCount = 7;
   private pinDiameter = 20;
 
   private ctx;
@@ -42,7 +43,16 @@ export class AppComponent implements AfterViewInit {
 
     ring.pins
     // [ring.pins[0]]
-      .forEach(p => ring.drawLines(ctx, p.getCandidateLines(), 0.3))
+    //   .forEach(p => ring.drawLines(ctx, p.getCandidateLines(), 0.3))
+      .forEach(p => {
+        p.getCandidateLines().map(getLinePixels).forEach(drawLinePixels(ctx))
+      })
+
+    getLinePixels([{x: 0, y: 0}, {x: 900, y: 10}]).forEach(pixel => {
+      ctx.fillStyle = `rgba(0, 0, 0, ${pixel.value})`;
+      ctx.fillRect( pixel.x, pixel.y, 1, 1 );
+    })
+
 
   }
 

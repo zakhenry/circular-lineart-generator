@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, ElementRef, Input, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, Input, NgZone, ViewChild} from '@angular/core';
 import {Ring} from "./threadwrapper/ring";
 import {drawLinePixels, getLinePixels} from "./threadwrapper/util";
 import {Line, TestedTangent} from "./threadwrapper/types";
@@ -19,7 +19,7 @@ export class AppComponent implements AfterViewInit {
   @ViewChild('srcImageCanvas') private srcImageCanvas: ElementRef<HTMLCanvasElement>;
   @ViewChild('srcImage') private srcImage: ElementRef<HTMLImageElement>;
 
-  constructor() {
+  constructor(private zone: NgZone) {
   }
 
   private pinCount = 30;
@@ -59,72 +59,28 @@ export class AppComponent implements AfterViewInit {
     //   .forEach(p => ring.drawLines(imageCtx, p.getCandidateLines(), 0.3))
     // imageCtx.stroke();
 
-    const imgData = imageCtx.getImageData(0, 0, imageCtx.canvas.width, imageCtx.canvas.height);
-
-    ring.pins.forEach(p => {
-
-      const best: TestedTangent = p.getCandidateLines().map((l): TestedTangent => {
-
-        let score = l.pixels.reduce((s, p) => {
-
-          const pixelIndex = (p.y * imgData.width + p.x) * 4;
-
-          let intensity = (
-            imgData.data[pixelIndex] +
-            imgData.data[pixelIndex+1] +
-            imgData.data[pixelIndex+2]
-          ) / 765;
-
-          return s + (intensity * p.value);
-        }, 0);
-
-        score /= l.pixels.length;
-
-        // ring.drawLine(ctx, l.line, score);
-
-        return {line: l, score};
-
-      })
-        // .sort((a, b) => (a.score - b.score));
-        .reduce((best: TestedTangent, testedLine: TestedTangent) => {
-
-          if (!best || testedLine.score < best.score) {
-            return testedLine;
-          }
-
-          return best;
-
-        }, null);
-
-
-
-      ring.drawLine(ctx, best.line.line)
-      // ring.drawLine(imageCtx, lines[0].line.line, lines[0].score);
-      // console.log(lines);
-      //
-      // ring.drawLines(imageCtx, [lines[0]].map(l => l.line));
-
-    })
-
-
     // ring.drawLines(ctx,ring.pins[0].getCandidateLines(true));
     // ring.pins[0].getScoredTangents(
     //   imageCtx.getImageData(0, 0, imageCtx.canvas.width, imageCtx.canvas.height),
     //
     // ).forEach(t => ring.drawLine(ctx, t.line.line, t.score));
     //
-    // ring.drawLine(ctx, ring.pins[0].getBestTangent(
-    //   imageCtx.getImageData(0, 0, imageCtx.canvas.width, imageCtx.canvas.height),
-    //
-    // ).line, 1, 1)
+    ring.pins.forEach(p => ring.drawLine(ctx, p.getBestTangent(
+      ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height),
+      imageCtx.getImageData(0, 0, imageCtx.canvas.width, imageCtx.canvas.height),
+    ).line, 1, 1));
+
+    ring.srcImageCtx = imageCtx;
 
   }
+
 
   public randomAnimationCancel: number;
 
   startRandomAnimation() {
     const lineIterator = this.ring.iterateRandom();
     const lines = [];
+
     const addRandomLine = () => {
       lines.push(lineIterator.next().value);
       this.ctx.clearRect(0, 0, this.width, this.height);
@@ -144,18 +100,19 @@ export class AppComponent implements AfterViewInit {
   public windingAnimationCancel: number;
 
   startWindingAnimation() {
-    const lineIterator = this.ring.iterateWinding(this.ctx, this.srcImageCtx);
-    const lines = [];
+
+    const lineIterator = this.ring.iterateWinding(this.ctx, this.srcImageCtx.getImageData(0, 0, this.srcImageCtx.canvas.width, this.srcImageCtx.canvas.height));
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.ctx.strokeStyle = 'rgba(0,0,0,1)';
-      this.ring.draw(this.ctx);
+    this.ring.draw(this.ctx);
+
     const addWindingLine = () => {
-      lines.push(lineIterator.next().value);
-      this.ring.drawLines(this.ctx, lines);
+      lineIterator.next();
       this.windingAnimationCancel = requestAnimationFrame(addWindingLine)
     }
 
     requestAnimationFrame(addWindingLine);
+
   }
 
   stopWindingAnimation() {

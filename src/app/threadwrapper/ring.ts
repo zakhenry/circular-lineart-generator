@@ -59,6 +59,7 @@ export class Ring {
   }
 
   private ctx: CanvasRenderingContext2D;
+  public srcImageCtx: CanvasRenderingContext2D;
 
   draw(ctx: CanvasRenderingContext2D): this {
     this.ctx = ctx;
@@ -175,14 +176,21 @@ export class Ring {
 
   }
 
-  * iterateWinding(outputCtx: CanvasRenderingContext2D, imageCtx: CanvasRenderingContext2D): IterableIterator<TangentLine> {
+  * iterateWinding(outputCtx: CanvasRenderingContext2D, imageData: ImageData): IterableIterator<TangentLine> {
 
     let pin = this.pins[0]; //todo start somewhere else
 
     let windingClockwise: boolean;
     while(true) {
-      // @todo this is not comparing with the current state
-      const bestTangent = pin.getBestTangent(imageCtx.getImageData(0, 0, imageCtx.canvas.width, imageCtx.canvas.height), windingClockwise);
+
+      const outputData = outputCtx.getImageData(0, 0, outputCtx.canvas.width, outputCtx.canvas.height)
+
+      const bestTangent = pin.getBestTangent(
+        outputData,
+        imageData,
+        windingClockwise);
+
+      this.drawLine(outputCtx, bestTangent.line, 1, 0.5, 0);
 
       pin = bestTangent.toPin;
       windingClockwise = bestTangent.internal ? !bestTangent.clockwise : bestTangent.clockwise;

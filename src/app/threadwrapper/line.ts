@@ -1,12 +1,13 @@
 import {Line, Pixel} from "./types";
 import {getLinePixels} from "./util";
+import {Pin} from "./pin";
 
 export class TangentLine {
 
   private cachedPixels;
   private cachedLength;
 
-  constructor(public line: Line, public fromPin, public toPin, public clockwise: boolean, public internal: boolean) {
+  constructor(public line: Line, public fromPin, public toPin: Pin, public clockwise: boolean, public internal: boolean) {
 
   }
 

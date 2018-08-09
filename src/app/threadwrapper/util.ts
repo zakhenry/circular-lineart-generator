@@ -31,6 +31,8 @@ function remainderFractionalPart(x: number): number {
  * This is a slightly simplified variant of Xiaolin Wu's line algorithm with the start and end point section of the algorithm removed
  * as we don't care about start & end points.
  */
+export const LINE_PIXEL_VALUE_MULTIPLIER = 2**16-1;
+export const LINE_PIXEL_STRIDE = 3;
 export function getLinePixels([from, to]: Line): AntialiasedLine {
 
   let x0 = from.x;
@@ -65,7 +67,9 @@ export function getLinePixels([from, to]: Line): AntialiasedLine {
   const xpxl2 = round(x1);
   let interY = yEnd + gradient;
 
+  const arr = new Int16Array((xpxl2-xpxl1) * 6);
   for (let x = xpxl1 + 1; x < xpxl2 - 1; x++) {
+
     pixels.push({
       x: steep ? integerPart(interY) : x,
       y: steep ? x : integerPart(interY),
@@ -75,6 +79,16 @@ export function getLinePixels([from, to]: Line): AntialiasedLine {
       y: steep ? x : integerPart(interY) + 1,
       value: fractionalPart(interY)
     });
+
+    const index = x - (xpxl1 + 1);
+
+    // @todo use this Int16Array instead of the returned pixels for performance
+    arr[index * 6] = steep ? integerPart(interY) : x;
+    arr[index * 6 + 1] = steep ? x : integerPart(interY);
+    arr[index * 6 + 2] = remainderFractionalPart(interY) * LINE_PIXEL_VALUE_MULTIPLIER;
+    arr[index * 6 + 3] = steep ? integerPart(interY) + 1 : x;
+    arr[index * 6 + 4] = steep ? x : integerPart(interY) + 1;
+    arr[index * 6 + 5] = fractionalPart(interY) * LINE_PIXEL_VALUE_MULTIPLIER;
 
     interY += gradient;
   }

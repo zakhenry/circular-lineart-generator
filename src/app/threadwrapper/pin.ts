@@ -1,6 +1,7 @@
 import {Ring} from "./ring";
 import {Coordinate, Line, Tangents, TestedTangent} from "./types";
 import {TangentLine} from "./line";
+import {drawLinePixels} from "./util";
 
 export class Pin {
   private ring: Ring;
@@ -135,34 +136,74 @@ export class Pin {
     return Array.from(this.ring.candidatePinIterator(this));
   }
 
-  getScoredTangents(srcImgData: ImageData, startingClockwise?: boolean): TestedTangent[] {
-    return this.getCandidateLines(startingClockwise).map((l): TestedTangent => {
+  getScoredTangents(currentOutputData: ImageData, srcImgData: ImageData, startingClockwise?: boolean): TestedTangent[] {
 
-      let score = l.pixels.reduce((s, p) => {
+    // console.log(`currentOutputData.data.reduce((s, i) => s + i)`, currentOutputData.data.reduce((s, i) => s + i));
+
+    const candidateLines = this.getCandidateLines(startingClockwise)
+
+    // this.ring.srcImageCtx && this.ring.srcImageCtx.clearRect(0, 0, 1000, 1000);
+    // this.ring.srcImageCtx && this.ring.drawLines(this.ring.srcImageCtx, candidateLines);
+
+    return candidateLines.map((l, i): TestedTangent => {
+
+      let [imageLineIntensity, currentOutputIntensity, newOutputIntensity] = l.pixels.reduce(([i, c, n], p) => {
 
         const pixelIndex = (p.y * srcImgData.width + p.x) * 4;
 
-        let intensity = (
+        let intensity = (1 - (
           srcImgData.data[pixelIndex] +
           srcImgData.data[pixelIndex + 1] +
           srcImgData.data[pixelIndex + 2]
-        ) / 765;
+        ) / 765) * srcImgData.data[pixelIndex + 3];
 
-        return s + (intensity * p.value);
-      }, 0);
+        let currentIntensity = (1 - (
+          currentOutputData.data[pixelIndex] +
+          currentOutputData.data[pixelIndex + 1] +
+          currentOutputData.data[pixelIndex + 2]
+        ) / 765) * currentOutputData.data[pixelIndex + 3];
 
-      score /= l.pixels.length;
+        let newIntensity = Math.max(1, currentIntensity + 0.5);
+
+        return [i + (intensity * p.value), c + (currentIntensity * p.value), n + (newIntensity * p.value)];
+      }, [0, 0, 0]);
+
+      imageLineIntensity /= l.pixels.length;
+      currentOutputIntensity /= l.pixels.length;
+      newOutputIntensity /= l.pixels.length;
+
+
+      // II = 0.8 (nearly black)
+      // COI = 0 (never visited)
+      // NOI = 1 (black)
+      // score = II - COI = 0.8
+
+      // II = 0.8 (nearly black)
+      // COI = 1 (already covered)
+      // NOI = 1 (black)
+      // score = II - COI = -0.2
+
+      let score = imageLineIntensity - newOutputIntensity;
+
+      // let score = /*newOutputIntensity*/ - imageLineIntensity;
+      // if (imageLineIntensity > newOutputIntensity) {
+      //   score = 0;
+      // }
+      //
+      // if (currentOutputIntensity === newOutputIntensity) {
+      //   score = 0;
+      // }
 
       return {line: l, score};
     })
   }
 
-  getBestTangent(srcImgData: ImageData, startingClockwise?: boolean): TangentLine {
+  getBestTangent(currentOutputData: ImageData, srcImgData: ImageData, startingClockwise?: boolean): TangentLine {
 
     const best: TestedTangent =
-      this.getScoredTangents(srcImgData, startingClockwise).reduce((best: TestedTangent, testedLine: TestedTangent) => {
+      this.getScoredTangents(currentOutputData, srcImgData, startingClockwise).reduce((best: TestedTangent, testedLine: TestedTangent) => {
 
-        if (!best || testedLine.score < best.score) {
+        if (!best || testedLine.score > best.score) {
           return testedLine;
         }
 

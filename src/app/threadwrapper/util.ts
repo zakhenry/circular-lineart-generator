@@ -31,8 +31,9 @@ function remainderFractionalPart(x: number): number {
  * This is a slightly simplified variant of Xiaolin Wu's line algorithm with the start and end point section of the algorithm removed
  * as we don't care about start & end points.
  */
-export const LINE_PIXEL_VALUE_MULTIPLIER = 2**15-1;
+export const LINE_PIXEL_VALUE_MULTIPLIER = 2 ** 15 - 1;
 export const LINE_PIXEL_STRIDE = 3;
+
 export function getLinePixels([from, to]: Line): Int16Array {
 
   let x0 = from.x;
@@ -65,7 +66,7 @@ export function getLinePixels([from, to]: Line): Int16Array {
   const xpxl2 = round(x1);
   let interY = yEnd + gradient;
 
-  const arr = new Int16Array((xpxl2-xpxl1) * 6);
+  const arr = new Int16Array((xpxl2 - xpxl1) * 6);
   for (let x = xpxl1 + 1; x < xpxl2 - 1; x++) {
 
     const index = x - (xpxl1 + 1);
@@ -84,23 +85,11 @@ export function getLinePixels([from, to]: Line): Int16Array {
   return arr;
 }
 
-export function drawLinePixels(ctx: CanvasRenderingContext2D): (line: AntialiasedLine) => void {
+export function drawLinePixels(ctx: CanvasRenderingContext2D, pixels: Int16Array, alpha = 1): void {
 
-
-  return (line: AntialiasedLine) => {
-    if (0) {
-      ctx.beginPath();
-      ctx.strokeStyle = `hsla(1, 100%, 0%, 1)`;
-      ctx.moveTo(line[0].x + 100, line[0].y);
-      ctx.lineTo(line[line.length - 1].x + 100, line[line.length - 1].y);
-      ctx.stroke();
-    }
-    line.forEach(pixel => {
-      // ctx.fillStyle = `rgba(0, 0, 0, ${pixel.value})`;
-      ctx.fillStyle = `hsla(${360 * pixel.value}, 100%, 0%, ${pixel.value})`
-      ctx.fillRect( pixel.x, pixel.y, 1, 1 );
-    })
-
+  for (let i = 0; i < pixels.length; i += LINE_PIXEL_STRIDE) {
+    ctx.fillStyle = `hsla(0, 100%, 0%, ${(pixels[i+2] / LINE_PIXEL_VALUE_MULTIPLIER) * alpha})`;
+    ctx.fillRect(pixels[i], pixels[i+1], 1, 1);
   }
 
 }

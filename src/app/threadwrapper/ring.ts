@@ -1,6 +1,6 @@
 import {Pin} from "./pin";
-import {Coordinate, Line} from "./types";
-import {getRandomArrayElement} from "./util";
+import {Coordinate, Line, TestedPin, TestedTangent} from "./types";
+import {drawLinePixels, getRandomArrayElement} from "./util";
 import {TangentLine} from "./line";
 
 export class Ring {
@@ -73,7 +73,12 @@ export class Ring {
 
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
-    ctx.strokeStyle = `hsla(${360 * color}, 100%, ${brightness*100}%, ${alpha})`;
+
+    if (isFinite(color)) {
+      ctx.strokeStyle = `hsla(${360 * color}, 100%, ${brightness*100}%, ${alpha})`;
+    } else {
+      ctx.strokeStyle = 'transparent';
+    }
 
     ctx.lineTo(to.x, to.y);
     ctx.stroke();
@@ -178,7 +183,18 @@ export class Ring {
 
   * iterateWinding(outputCtx: CanvasRenderingContext2D, imageData: ImageData): IterableIterator<TangentLine> {
 
-    let pin = this.pins[0]; //todo start somewhere else
+    const initialData = outputCtx.getImageData(0, 0, outputCtx.canvas.width, outputCtx.canvas.height);
+    let pin = this.pins.reduce((best: TestedPin, pin): TestedPin => {
+
+      const score = pin.getScoredTangents(initialData, imageData).reduce((max, t) => Math.max(t.score, max), 0);
+
+      if (!best || best.score < score) {
+        return {pin, score};
+      }
+
+      return best;
+
+    }, null).pin;
 
     let windingClockwise: boolean;
     while(true) {
@@ -190,7 +206,7 @@ export class Ring {
         imageData,
         windingClockwise);
 
-      this.drawLine(outputCtx, bestTangent.line, 1, 0.5, 0);
+      drawLinePixels(outputCtx, bestTangent.pixels, .8);
 
       pin = bestTangent.toPin;
       windingClockwise = bestTangent.internal ? !bestTangent.clockwise : bestTangent.clockwise;

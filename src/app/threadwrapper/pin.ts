@@ -1,7 +1,7 @@
 import {Ring} from "./ring";
 import {Coordinate, Line, Tangents, TestedTangent} from "./types";
 import {TangentLine} from "./line";
-import {drawLinePixels, getRandomArrayElement, LINE_PIXEL_STRIDE, LINE_PIXEL_VALUE_MULTIPLIER} from "./util";
+import { getRandomArrayElement, LINE_PIXEL_STRIDE, LINE_PIXEL_VALUE_MULTIPLIER} from "./util";
 
 export class Pin {
   private ring: Ring;
@@ -92,13 +92,6 @@ export class Pin {
     return tangents;
   }
 
-  isNearTo(prev: Pin, count, maxDistance = 1) {
-
-    const distance = Math.abs(this.index - prev.index);
-
-    return distance <= maxDistance || distance > (count - maxDistance);
-  }
-
   setRing(ring: Ring): this {
     this.ring = ring;
     return this;
@@ -138,14 +131,10 @@ export class Pin {
 
   getScoredTangents(currentOutputData: ImageData, srcImgData: ImageData, startingClockwise?: boolean): TestedTangent[] {
 
-    // console.log(`currentOutputData.data.reduce((s, i) => s + i)`, currentOutputData.data.reduce((s, i) => s + i));
-
     const candidateLines = this.getCandidateLines(startingClockwise)
 
-    // this.ring.srcImageCtx && this.ring.srcImageCtx.clearRect(0, 0, 1000, 1000);
-    // this.ring.srcImageCtx && this.ring.drawLines(this.ring.srcImageCtx, candidateLines);
-
-    return candidateLines.map((l, i): TestedTangent => {
+    return candidateLines
+      .map((l): TestedTangent => {
 
       const pixels = l.pixels;
       const pixelCount = pixels.length / LINE_PIXEL_STRIDE;
@@ -158,19 +147,10 @@ export class Pin {
 
         const pixelIndex = (pixels[i + 1] * srcImgData.width + pixels[i]) * 4;
 
-        let intensity = (1 - (
-          srcImgData.data[pixelIndex] +
-          srcImgData.data[pixelIndex + 1] +
-          srcImgData.data[pixelIndex + 2]
-        ) / 765) * srcImgData.data[pixelIndex + 3]/255;
+        let intensity = this.computeBrightnessScore(srcImgData.data, pixelIndex);
+        let current = this.computeBrightnessScore(currentOutputData.data, pixelIndex);
 
-        let current = (1 - (
-          currentOutputData.data[pixelIndex] +
-          currentOutputData.data[pixelIndex + 1] +
-          currentOutputData.data[pixelIndex + 2]
-        ) / 765) * currentOutputData.data[pixelIndex + 3]/255;
-
-        let next = Math.min(1, current + 0.5);
+        let next = Math.max(0, current - 0.5);
 
         const pixelValue = pixels[i + 2] / LINE_PIXEL_VALUE_MULTIPLIER;
         targetIntensity += intensity * pixelValue;
@@ -180,31 +160,26 @@ export class Pin {
 
       targetIntensity /= pixelCount;
       currentIntensity /= pixelCount;
-      newIntensity /= pixelCount;
 
-      // II = 0.8 (nearly black)
-      // COI = 0 (never visited)
-      // NOI = 1 (black)
-      // score = II - COI = 0.8
+      let score;
 
-      // II = 0.8 (nearly black)
-      // COI = 1 (already covered)
-      // NOI = 1 (black)
-      // score = II - COI = -0.2
-
-      // let score = targetIntensity - currentIntensity /*+ newIntensity*/;
-      let score = targetIntensity - (currentIntensity + newIntensity);
-
-      // if (imageLineIntensity > newOutputIntensity) {
-      //   score = 0;
-      // }
-
-      if (currentIntensity >= newIntensity) {
+      if ((targetIntensity >= currentIntensity)) {
         score = 0;
+      } else {
+        score = Math.abs(currentIntensity - targetIntensity);
       }
 
       return {line: l, score};
     })
+  }
+
+  computeBrightnessScore(pixels: Uint8ClampedArray, pixelIndex: number, brightnessMultiplierPower = 1): number {
+
+    const normalisedBrightness = (
+      (pixels[pixelIndex] + pixels[pixelIndex + 1] + pixels[pixelIndex + 2])
+    ) / 765;
+
+    return (normalisedBrightness ** brightnessMultiplierPower) * (pixels[pixelIndex + 3] / 255);
   }
 
   getBestTangent(currentOutputData: ImageData, srcImgData: ImageData, startingClockwise?: boolean): TangentLine {
@@ -223,8 +198,25 @@ export class Pin {
 
       }, []);
 
+    if (bestScoring[0].score === 0) {
+      return bestScoring[0].line;
+    }
 
-    return bestScoring.length === 1 ? bestScoring[0].line : getRandomArrayElement(bestScoring).line;
+    if (bestScoring.length === 1) {
+      return bestScoring[0].line;
+    }
+
+    return bestScoring.reduce((acc: TestedTangent, bestCandidate) => {
+
+      const score = bestCandidate.line.toPin.getScoredTangents(currentOutputData, srcImgData, bestCandidate.line.clockwise).reduce((max, t) => Math.max(max, t.score), 0);
+
+      if (!acc || acc.score < score) {
+        acc = bestCandidate;
+      }
+
+      return acc;
+
+    }, null).line;
   }
 
 }

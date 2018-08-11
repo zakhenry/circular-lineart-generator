@@ -33,10 +33,10 @@ export class AppComponent implements AfterViewInit {
     this.ctx = ctx;
     this.srcImageCtx = imageCtx;
 
-    ctx.clearRect(0, 0, this.width, this.height);
-
     const circleDiameter = Math.min(this.width, this.height) / 2 * 0.9;
 
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, this.width, this.height);
     const ring = new Ring(circleDiameter, {x: this.width / 2, y: this.height / 2})
         .addPins(this.pinCount, this.pinDiameter)
         .draw(ctx)
@@ -44,6 +44,7 @@ export class AppComponent implements AfterViewInit {
     ;
 
     this.ring = ring;
+    ring.srcImageCtx = imageCtx;
 
     // ring.pins
     // [ring.pins[0]]
@@ -62,12 +63,15 @@ export class AppComponent implements AfterViewInit {
     //
     // ).forEach(t => ring.drawLine(ctx, t.line.line, t.score));
     //
-    ring.pins.forEach(p => ring.drawLine(ctx, p.getBestTangent(
-      ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height),
-      imageCtx.getImageData(0, 0, imageCtx.canvas.width, imageCtx.canvas.height),
-    ).line, 1, 1));
 
-    ring.srcImageCtx = imageCtx;
+    const imageData = imageCtx.getImageData(0, 0, imageCtx.canvas.width, imageCtx.canvas.height);
+
+    ring.drawLines(ctx, ring.pins.map(p => p.getBestTangent(
+      ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height),
+      imageData,
+    )));
+
+    imageCtx.putImageData(imageData, 0, 0);
 
   }
 
@@ -99,17 +103,18 @@ export class AppComponent implements AfterViewInit {
 
   startWindingAnimation() {
 
+    this.totalLength = 0;
     const lineIterator = this.ring.iterateWinding(this.ctx, this.srcImageCtx.getImageData(0, 0, this.srcImageCtx.canvas.width, this.srcImageCtx.canvas.height));
-    this.ctx.clearRect(0, 0, this.width, this.height);
+    this.ctx.fillStyle = 'white';
+    this.ctx.fillRect(0, 0, this.width, this.height);
     this.ctx.strokeStyle = 'rgba(0,0,0,1)';
     this.ring.draw(this.ctx);
 
     const addWindingLine = () => {
       const line = lineIterator.next().value;
       this.totalLength += (line.length / 1000 * 25.4) / 72; // length in m @ 72ppi
-
       this.windingAnimationCancel = requestAnimationFrame(addWindingLine)
-    }
+    };
 
     requestAnimationFrame(addWindingLine);
 
@@ -136,6 +141,10 @@ export class AppComponent implements AfterViewInit {
 
       const scale = overflowHorizontal ? (canvas.height / image.height) : (canvas.width / image.width);
 
+
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, this.width, this.height);
+
       ctx.drawImage(
         image,
         Math.max((image.width - (canvas.width / scale)) / 2, 0),
@@ -146,7 +155,7 @@ export class AppComponent implements AfterViewInit {
         0,
         canvas.width,
         canvas.height,
-      )
+      );
 
       ctx.globalCompositeOperation = 'destination-in';
       ctx.beginPath();
@@ -154,6 +163,26 @@ export class AppComponent implements AfterViewInit {
       ctx.closePath();
       ctx.fill();
       ctx.globalCompositeOperation = 'source-over';
+
+      function contrastImage(imgData: ImageData, contrast: number){  //input range -100-100
+        //input range [-100..100]
+        var d = imgData.data;
+        contrast = (contrast/100) + 1;	//convert to decimal & shift range: [0..2]
+        var intercept = 128 * (1 - contrast);
+        for(var i=0;i<d.length;i+=4){	//r,g,b,a
+          d[i] = d[i]*contrast + intercept;
+          d[i+1] = d[i+1]*contrast + intercept;
+          d[i+2] = d[i+2]*contrast + intercept;
+        }
+        return imgData;
+      }
+
+      if (1) {
+        const w = this.width, h = this.height;
+        const data = ctx.getImageData(0, 0, w, h);
+        contrastImage(data, 100)
+        ctx.putImageData(data, 0, 0);
+      }
 
       this.draw()
     }

@@ -1,4 +1,5 @@
 import {TangentLine} from "./line";
+import {Pin} from "./pin";
 
 export interface Coordinate {
   x: number;
@@ -22,6 +23,11 @@ export interface TangentPair {
 
 export interface TestedTangent {
   line: TangentLine;
+  score: number;
+}
+
+export interface TestedPin {
+  pin: Pin;
   score: number;
 }
 
